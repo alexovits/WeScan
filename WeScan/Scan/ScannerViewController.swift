@@ -82,8 +82,10 @@ final class ScannerViewController: UIViewController {
         setupToolbar()
         setupConstraints()
         
+        #if !targetEnvironment(simulator)
         captureSessionManager = CaptureSessionManager(videoPreviewLayer: videoPreviewlayer)
         captureSessionManager?.delegate = self
+        #endif
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -178,9 +180,16 @@ final class ScannerViewController: UIViewController {
     // MARK: - Actions
     
     @objc private func captureImage(_ sender: UIButton) {
+        #if targetEnvironment(simulator)
+        let picture = UIImage(color: .red, size: CGSize(width: 200, height: 200))
+        let editVC = EditScanViewController(image: picture!, quad: nil)
+        navigationController?.pushViewController(editVC, animated: false)
+        shutterButton.isUserInteractionEnabled = true
+        #else
         (navigationController as? ImageScannerController)?.flashToBlack()
         shutterButton.isUserInteractionEnabled = false
         captureSessionManager?.capturePhoto()
+        #endif
     }
     
     @objc private func toggleAutoScan() {
@@ -221,6 +230,20 @@ final class ScannerViewController: UIViewController {
         imageScannerController.imageScannerDelegate?.imageScannerControllerDidCancel(imageScannerController)
     }
     
+}
+
+public extension UIImage {
+    public convenience init?(color: UIColor, size: CGSize = CGSize(width: 1, height: 1)) {
+        let rect = CGRect(origin: .zero, size: size)
+        UIGraphicsBeginImageContextWithOptions(rect.size, false, 0.0)
+        color.setFill()
+        UIRectFill(rect)
+        let image = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        
+        guard let cgImage = image?.cgImage else { return nil }
+        self.init(cgImage: cgImage)
+    }
 }
 
 extension ScannerViewController: RectangleDetectionDelegateProtocol {
